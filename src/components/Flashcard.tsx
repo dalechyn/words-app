@@ -6,7 +6,7 @@ import { useWordsStore } from "@/store/useWordsStore";
 const SWIPE_THRESHOLD = 60;
 
 export default function Flashcard() {
-  const { words, order, currentIndex, history, nextWord, prevWord } =
+  const { words, order, currentIndex, history, reversed, nextWord, prevWord } =
     useWordsStore();
 
   const [flipped, setFlipped] = useState(false);
@@ -26,7 +26,7 @@ export default function Flashcard() {
     (dir: "left" | "right") => {
       setExitDir(dir);
       setTimeout(() => {
-        if (dir === "right") {
+        if (dir === "left") {
           nextWord();
         } else {
           prevWord();
@@ -39,6 +39,12 @@ export default function Flashcard() {
     [nextWord, prevWord]
   );
 
+  const applyDampen = (dx: number) => {
+    // Dampen right swipe when no history (can't go back)
+    if (dx > 0 && history.length === 0) return dx * 0.2;
+    return dx;
+  };
+
   const onTouchStart = (e: React.TouchEvent) => {
     touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     setSwiping(true);
@@ -47,19 +53,15 @@ export default function Flashcard() {
   const onTouchMove = (e: React.TouchEvent) => {
     if (!touchStart.current) return;
     const dx = e.touches[0].clientX - touchStart.current.x;
-    if (dx < 0 && history.length === 0) {
-      setSwipeX(dx * 0.2);
-    } else {
-      setSwipeX(dx);
-    }
+    setSwipeX(applyDampen(dx));
   };
 
   const onTouchEnd = () => {
     setSwiping(false);
-    if (swipeX > SWIPE_THRESHOLD) {
-      handleSwipeComplete("right");
-    } else if (swipeX < -SWIPE_THRESHOLD && history.length > 0) {
+    if (swipeX < -SWIPE_THRESHOLD) {
       handleSwipeComplete("left");
+    } else if (swipeX > SWIPE_THRESHOLD && history.length > 0) {
+      handleSwipeComplete("right");
     } else {
       setSwipeX(0);
     }
@@ -74,20 +76,16 @@ export default function Flashcard() {
   const onMouseMove = (e: React.MouseEvent) => {
     if (mouseStart.current === null) return;
     const dx = e.clientX - mouseStart.current;
-    if (dx < 0 && history.length === 0) {
-      setSwipeX(dx * 0.2);
-    } else {
-      setSwipeX(dx);
-    }
+    setSwipeX(applyDampen(dx));
   };
 
   const onMouseUp = () => {
     setSwiping(false);
     if (mouseStart.current === null) return;
-    if (swipeX > SWIPE_THRESHOLD) {
-      handleSwipeComplete("right");
-    } else if (swipeX < -SWIPE_THRESHOLD && history.length > 0) {
+    if (swipeX < -SWIPE_THRESHOLD) {
       handleSwipeComplete("left");
+    } else if (swipeX > SWIPE_THRESHOLD && history.length > 0) {
+      handleSwipeComplete("right");
     } else {
       setSwipeX(0);
     }
@@ -109,6 +107,11 @@ export default function Flashcard() {
   };
 
   if (!word) return null;
+
+  const frontLabel = reversed ? "Russian" : "Polish";
+  const backLabel = reversed ? "Polish" : "Russian";
+  const frontText = reversed ? word.russian : word.polish;
+  const backText = reversed ? word.polish : word.russian;
 
   const exitTransform =
     exitDir === "right"
@@ -169,10 +172,10 @@ export default function Flashcard() {
             style={{ backfaceVisibility: "hidden" }}
           >
             <span className="text-xs uppercase tracking-widest text-zinc-400 mb-4">
-              Polish
+              {frontLabel}
             </span>
             <span className="text-3xl sm:text-4xl font-bold text-center break-words leading-tight">
-              {word.polish}
+              {frontText}
             </span>
             <span className="text-xs text-zinc-400 mt-6">Tap to flip</span>
           </div>
@@ -186,10 +189,10 @@ export default function Flashcard() {
             }}
           >
             <span className="text-xs uppercase tracking-widest text-blue-200 mb-4">
-              Russian
+              {backLabel}
             </span>
             <span className="text-3xl sm:text-4xl font-bold text-center break-words leading-tight">
-              {word.russian}
+              {backText}
             </span>
             <span className="text-xs text-blue-200 mt-6">Tap to flip back</span>
           </div>
@@ -198,10 +201,10 @@ export default function Flashcard() {
 
       {/* Swipe hints */}
       <div className="flex justify-between w-72 sm:w-80 text-xs text-zinc-400">
+        <span>&larr; Next</span>
         <span className={history.length === 0 ? "opacity-30" : ""}>
-          &larr; Previous
+          Previous &rarr;
         </span>
-        <span>&rarr; Next</span>
       </div>
     </div>
   );

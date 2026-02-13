@@ -21,12 +21,14 @@ interface WordsState {
   currentIndex: number;
   history: number[];
   completed: boolean;
+  reversed: boolean;
 
   importWords: (words: WordPair[]) => void;
   reset: () => void;
   nextWord: () => void;
   prevWord: () => void;
   restartList: () => void;
+  toggleReversed: () => void;
 }
 
 export const useWordsStore = create<WordsState>()(
@@ -37,6 +39,7 @@ export const useWordsStore = create<WordsState>()(
       currentIndex: 0,
       history: [],
       completed: false,
+      reversed: false,
 
       importWords: (words) => {
         const order = shuffle(words.map((_, i) => i));
@@ -78,6 +81,10 @@ export const useWordsStore = create<WordsState>()(
         const { words } = get();
         const order = shuffle(words.map((_, i) => i));
         set({ order, currentIndex: 0, history: [], completed: false });
+      },
+
+      toggleReversed: () => {
+        set((s) => ({ reversed: !s.reversed }));
       },
     }),
     {
